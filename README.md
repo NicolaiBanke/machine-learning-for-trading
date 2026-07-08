@@ -352,6 +352,9 @@ edge. The closing bookend to Chapter 1: the process is the edge.
 
 ## Quick Start
 
+These commands are typed into a terminal on your own computer, not into GitHub. New to the command
+line? Start with **[Before You Begin](docs/installation.md#before-you-begin)**.
+
 Run everything **from the repository root**. Clone and set up with Docker or a local `uv` environment:
 
 ```bash
@@ -364,7 +367,8 @@ pip install uv && uv sync # Option B — local with uv
 ```
 
 See the **[installation guide](docs/installation.md)** for platform-specific setup (Linux, Windows WSL2, macOS) and GPU
-instructions.
+instructions. Windows readers: WSL2 must be working *before* Docker Desktop is installed, and the
+reboot is not optional.
 
 **Download data.** Most notebooks need datasets; start with the free ones (no API keys):
 

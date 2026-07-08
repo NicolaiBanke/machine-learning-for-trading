@@ -4,6 +4,34 @@ This guide walks you through setting up Docker to run the ML4T notebooks. Pre-bu
 
 ---
 
+## Before You Begin
+
+Every command in this guide is typed into a **terminal** on your own computer, not into the
+GitHub website. GitHub stores the code; your terminal is where you tell your machine to fetch
+and run it.
+
+| Platform | How to open a terminal |
+|----------|------------------------|
+| **Windows** | Start menu → type `PowerShell` → open *Windows PowerShell*. Some steps below need *Run as administrator* (right-click → Run as administrator). |
+| **macOS** | Applications → Utilities → *Terminal* |
+| **Linux** | `Ctrl+Alt+T`, or search for *Terminal* |
+
+Commands shown in a block like this are typed at the terminal prompt, one line at a time,
+then Enter:
+
+```bash
+git clone https://github.com/stefan-jansen/machine-learning-for-trading.git
+```
+
+Type flags exactly as written. `--install` is two dashes attached to the word with no space
+before it. `wsl -- install` is a different command and will not do what you want.
+
+If a command is not found, the tool it belongs to is not installed yet. `git` ships with
+[Git for Windows](https://git-scm.com/download/win) and with the Xcode command-line tools on
+macOS (`xcode-select --install`).
+
+---
+
 ## Platform Support
 
 | Platform                | ml4t | py312  | Benchmark | GPU |
@@ -80,13 +108,43 @@ If Docker Compose is missing: `sudo apt install docker-compose-plugin`
 
 ### Windows 11 (WSL2)
 
-1. **Enable WSL2**: Open PowerShell as Administrator:
+Docker Desktop on Windows runs its engine inside WSL2. WSL2 must be working before Docker
+Desktop can start, so complete steps 1-3 in order and do not skip the restart.
+
+0. **Check that hardware virtualization is on.** WSL2 cannot run without it, and it is disabled
+   by default on some machines. Press `Ctrl+Shift+Esc` → *Performance* tab → *CPU*, and look for
+   **Virtualization**.
+
+   - **Enabled**: continue to step 1.
+   - **Disabled**: turn it on in your BIOS/UEFI setup screen, where it is called *Intel VT-x*,
+     *AMD-V*, or *Virtualization Technology*. The key to enter setup varies by manufacturer
+     (commonly `F2`, `F10`, or `Del` during boot). Nothing below will work until this reads Enabled.
+
+1. **Install WSL2 and a Linux distribution.** Open PowerShell **as Administrator**:
    ```powershell
-   wsl --install
-   # Restart when prompted
+   wsl --install -d Ubuntu
    ```
 
-2. **Increase WSL2 memory limit**: WSL2 defaults to 50% of host RAM, which may not be enough for data-heavy notebooks. Create or edit `%USERPROFILE%\.wslconfig`:
+   Two dashes, no space: `--install`, not `-- install`. The `-d Ubuntu` is required. Without it,
+   some Windows builds install the WSL runtime but no Linux distribution, and later steps fail
+   with `Windows Subsystem for Linux has no installed distributions`.
+
+2. **Restart your computer.** This is a required step, not a conditional one. `wsl --install`
+   enables a Windows feature that does not take effect until you reboot, and Windows does not
+   always prompt you. If the command printed `The operation completed successfully`, restart now.
+
+   After the restart, Ubuntu opens and asks you to create a username and password. The password
+   is not echoed as you type, which is expected.
+
+3. **Verify WSL2 before installing Docker.** In PowerShell:
+   ```powershell
+   wsl --list --verbose
+   ```
+   You should see `Ubuntu` with `STATE  Running` (or `Stopped`) and `VERSION  2`. If the list is
+   empty, repeat step 1 and confirm you restarted. If `VERSION` reads `1`, run
+   `wsl --set-version Ubuntu 2`.
+
+4. **Increase WSL2 memory limit**: WSL2 defaults to 50% of host RAM, which may not be enough for data-heavy notebooks. Create or edit `%USERPROFILE%\.wslconfig`:
    ```ini
    [wsl2]
    memory=12GB
@@ -94,18 +152,22 @@ If Docker Compose is missing: `sudo apt install docker-compose-plugin`
    ```
    Then restart WSL: `wsl --shutdown` from PowerShell, then reopen your terminal.
 
-3. **Install Docker Desktop** from [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
+5. **Install Docker Desktop** from [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
+
+   Install it only after `wsl --list --verbose` shows a `VERSION 2` distribution. Docker Desktop
+   started against a non-working WSL2 backend hangs on "Starting the Docker Engine…" indefinitely.
+
    - Ensure "Use WSL 2 based engine" is checked in Settings → General
    - In Settings → Resources → WSL Integration, enable your Ubuntu distribution
    - In Settings → Resources, allocate at least 8 GB memory and 60 GB disk
 
-4. **Verify Docker Desktop integration**: Open your WSL Ubuntu terminal and run:
+6. **Verify Docker Desktop integration**: Open your WSL Ubuntu terminal and run:
    ```bash
    docker version
    ```
-   If this fails with "Cannot connect to the Docker daemon", Docker Desktop's WSL integration is not enabled for your distribution. Check step 3 above.
+   If this fails with "Cannot connect to the Docker daemon", Docker Desktop's WSL integration is not enabled for your distribution. Check step 5 above.
 
-5. **Clone in WSL** (not on Windows drives — much faster):
+7. **Clone in WSL** (not on Windows drives — much faster):
    ```bash
    cd ~
    git clone https://github.com/stefan-jansen/machine-learning-for-trading.git
@@ -229,6 +291,23 @@ docker compose --profile py312 run --rm py312 python 05_synthetic_data/03_sigcwg
 ---
 
 ## Troubleshooting
+
+### Docker Desktop hangs on "Starting the Docker Engine…" (Windows)
+
+Check the status bar at the bottom of the Docker Desktop window. If it reads `RAM 0.00 GB`
+and `CPU 0.00%`, the engine's virtual machine never started, and the cause is the WSL2
+backend rather than Docker itself. Work through it in this order:
+
+1. **Virtualization off in firmware.** Task Manager → Performance → CPU → *Virtualization*.
+   If it says Disabled, enable Intel VT-x / AMD-V in BIOS/UEFI. See step 0 of the
+   [Windows setup](#windows-11-wsl2) above.
+2. **Pending reboot.** If you ran `wsl --install` and did not restart, restart now.
+3. **No Linux distribution.** Run `wsl --list --verbose` in PowerShell. If it prints
+   `has no installed distributions`, run `wsl --install -d Ubuntu` and restart.
+4. **WSL2 backend not selected.** Docker Desktop → Settings → General → "Use the WSL 2
+   based engine".
+
+Then quit Docker Desktop fully (right-click the tray icon → Quit) and start it again.
 
 ### "Cannot connect to Docker daemon"
 
