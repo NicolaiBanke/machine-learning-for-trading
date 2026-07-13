@@ -547,9 +547,19 @@ try:
     print(f"ES futures data: {len(es):,} bars")
     print(f"Date range: {es['timestamp'].min()} to {es['timestamp'].max()}")
 
-    # Compute MFE/MAE for 21-day horizon
+    # Compute MFE/MAE for 21-day horizon. Excursions ride the roll-adjusted
+    # series (adj_*) so roll gaps don't register as favorable/adverse moves.
     futures_horizon = 21
-    es_mfe_mae = compute_mfe_mae(es, "timestamp", "close", futures_horizon, unit="pct", side=1)
+    es_mfe_mae = compute_mfe_mae(
+        es,
+        "timestamp",
+        "adj_close",
+        futures_horizon,
+        high_col="adj_high",
+        low_col="adj_low",
+        unit="pct",
+        side=1,
+    )
 
     # Summary statistics
     print(f"\nES MFE/MAE Statistics (21d horizon, n={len(es_mfe_mae):,}):")

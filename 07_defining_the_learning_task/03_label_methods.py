@@ -844,31 +844,73 @@ fig.show()
 # %% [markdown]
 # ### 6.6 Effective Sample Size
 #
-# The section text defines $N_{\text{eff}} = \sum_{t,a} w_{t,a}$ and gives
-# a worked example: 100 ETFs $\times$ 20 years $\times$ 250 days $= 500{,}000$
-# nominal labels; with $H=5$, $N_{\text{eff}} \approx 100{,}000$.
-# Let us verify this empirically on our fixed-horizon ETF labels.
+# The section text defines $N_{\text{eff}} = \sum_{t,a} w_{t,a}$ and notes that
+# for fixed-horizon labels sampled at every bar, $N_{\text{eff}} \approx N / H$.
+#
+# That is an approximation. Below we *measure* $N_{\text{eff}}$ by computing each
+# label's average uniqueness $w_{t,a}$ directly — per symbol, since concurrency
+# accumulates along the time axis, not across the cross-section — and compare it
+# to the $N/H$ shortcut. We report both the single-asset (SPY) and the full-panel
+# figures, because they answer different questions: how many independent
+# observations does *one* series carry, and how many does the *panel* carry.
 
 # %%
-# Compute effective sample size for fixed-horizon labels on the ETF universe
+# Measure effective sample size for fixed-horizon labels on the ETF universe.
+#
+# Uniqueness depends only on the label index geometry (start, end, n_bars), not on
+# prices: label i is alive over bars [i, i+H], and w_i averages 1/c(u) over that span.
+# Concurrency is a per-symbol quantity — two different ETFs' labels do not overlap
+# each other in the sense the uniqueness weight measures — so we sum per symbol.
 N_nominal = len(etf_with_fwd)
 n_symbols = etf_with_fwd["symbol"].n_unique()
 
-# For fixed-horizon labels sampled at every bar, uniqueness ≈ 1/H
-# so N_eff ≈ N / H (ignoring cross-sectional correlation)
+# For fixed-horizon labels sampled at every bar, uniqueness ≈ 1/H so N_eff ≈ N/H.
+# This is what the section text quotes; we keep it to compare against the measurement.
 N_eff_approx = N_nominal / horizon
 
-# Exact uniqueness for fixed-horizon: each label is alive for H bars,
-# and at each bar ~n_symbols labels are alive (one per asset).
-# Concurrency c(u) ≈ n_symbols × H for cross-sectional panels,
-# but uniqueness is computed per-asset: w ≈ 1/H for the time-series dimension.
+
+def measure_n_eff(n_labels: int, h: int) -> tuple[float, float]:
+    """Return (mean average-uniqueness, N_eff) for n_labels contiguous H-bar labels."""
+    starts = np.arange(n_labels)
+    w = calculate_label_uniqueness(starts, starts + h, n_bars=n_labels + h)
+    return float(w.mean()), float(w.sum())
+
+
+# Single asset: SPY. This is the number quoted for a one-series study.
+spy_labels = etf_with_fwd.filter(pl.col("symbol") == "SPY").height
+spy_mean_u, spy_n_eff = measure_n_eff(spy_labels, horizon)
+
+# Full panel: sum N_eff across symbols (each symbol has its own length).
+panel_n_eff = 0.0
+for (_sym,), grp in etf_with_fwd.group_by("symbol"):
+    if grp.height > horizon:
+        panel_n_eff += measure_n_eff(grp.height, horizon)[1]
+
+panel_mean_u = panel_n_eff / N_nominal
+se_inflation = np.sqrt(N_nominal / panel_n_eff)
+
 print(f"Fixed-horizon ETF labels (H={horizon}):")
-print(f"  Symbols:         {n_symbols}")
-print(f"  Nominal N:       {N_nominal:,}")
-print(f"  N_eff ≈ N/H:     {N_eff_approx:,.0f}")
+print(f"  Symbols:              {n_symbols}")
+print(f"  Nominal N (panel):    {N_nominal:,}")
+print()
+print(f"  SPY: labels           {spy_labels:,}")
+print(f"       avg uniqueness   {spy_mean_u:.4f}   (≈ 1/(H+1) = {1 / (horizon + 1):.4f})")
+print(f"       N_eff (measured) {spy_n_eff:,.0f}")
+print()
+print(f"  Panel: avg uniqueness {panel_mean_u:.4f}")
+print(f"         N_eff measured {panel_n_eff:,.0f}")
 print(
-    f"  SE inflation:    √{horizon} ≈ {np.sqrt(horizon):.1f}× (confidence intervals based on N are this much too narrow)"
+    f"         N_eff ≈ N/H    {N_eff_approx:,.0f}   (the shortcut, off by "
+    f"{100 * (N_eff_approx / panel_n_eff - 1):.1f}%)"
 )
+print(
+    f"  SE inflation:         √(N/N_eff) = {se_inflation:.2f}× "
+    f"(confidence intervals based on N are this much too narrow)"
+)
+print()
+print("  Note: a label spans H+1 bars inclusive of both endpoints, so maximal")
+print(f"  overlap gives w = 1/(H+1) = {1 / (horizon + 1):.4f}, not 1/H = {1 / horizon:.4f}.")
+print("  That is why the measured N_eff sits slightly below the N/H shortcut.")
 
 # %% [markdown]
 # ## 7. Trend Scanning Labels

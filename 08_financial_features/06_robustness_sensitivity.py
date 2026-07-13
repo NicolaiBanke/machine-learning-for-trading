@@ -104,9 +104,13 @@ print(f"Computing features for {len(symbols)} symbols")
 from ml4t.diagnostic.metrics import compute_ic_hac_stats
 
 
-def _ic_stats_with_icir(ic_series: np.ndarray) -> dict:
-    """Compute HAC-adjusted IC stats and add ICIR (mean IC / std IC)."""
-    stats = compute_ic_hac_stats(ic_series)
+def _ic_stats_with_icir(ic_series: np.ndarray, label_horizon: int | None = None) -> dict:
+    """Compute HAC-adjusted IC stats and add ICIR (mean IC / std IC).
+
+    ``label_horizon`` is forwarded to the HAC bandwidth so overlapping
+    forward-return labels get a Newey-West lag of at least ``horizon - 1``.
+    """
+    stats = compute_ic_hac_stats(ic_series, label_horizon=label_horizon)
     std_ic = float(np.std(ic_series[~np.isnan(ic_series)], ddof=1))
     stats["icir"] = stats["mean_ic"] / std_ic if std_ic > 0 else np.nan
     return stats
@@ -180,7 +184,7 @@ for lb in LOOKBACK_RANGE:
     ic_series = compute_momentum_ic_series(prices_wide, symbols, lb, FORWARD_HORIZON)
 
     if len(ic_series) >= 20:
-        stats_result = _ic_stats_with_icir(ic_series)
+        stats_result = _ic_stats_with_icir(ic_series, label_horizon=FORWARD_HORIZON)
         stats_result["ics"] = ic_series  # Keep for later use
         sweep_results[lb] = stats_result
 
@@ -488,7 +492,7 @@ def compute_regime_ic(
                         ics.append(ic)
 
         if ics:
-            stats = _ic_stats_with_icir(np.array(ics))
+            stats = _ic_stats_with_icir(np.array(ics), label_horizon=forward_horizon)
             stats["ics"] = np.array(ics)
             regime_results[regime] = stats
 
@@ -738,7 +742,7 @@ def _compute_variant_ic(
                 if not np.isnan(ic):
                     ics.append(ic)
 
-    return _ic_stats_with_icir(np.array(ics))
+    return _ic_stats_with_icir(np.array(ics), label_horizon=FORWARD_HORIZON)
 
 
 # %%
