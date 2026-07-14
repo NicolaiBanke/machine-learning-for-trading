@@ -38,7 +38,7 @@
 #
 # ## Prerequisites
 #
-# - `01_data_quality_diagnostics` — establishes the ETF coverage assumptions used here.
+# - `01_data_quality_diagnostics` - establishes the ETF coverage assumptions used here.
 # - Familiarity with leakage-aware splitting (Chapter 6 §6.3) and forward-return semantics.
 # - Polars DataFrame manipulation; basic statistics (t-statistics, percentiles).
 #
@@ -48,7 +48,7 @@
 # - **Output**: Example labels for teaching (use `compute_labels()` for production)
 
 # %%
-"""Label Methods — fixed-horizon, cross-sectional, and event-driven labeling for supervised learning."""
+"""Label Methods - fixed-horizon, cross-sectional, and event-driven labeling for supervised learning."""
 
 from __future__ import annotations
 
@@ -78,6 +78,7 @@ from scipy import stats as sp_stats
 
 from data import load_etfs
 from utils.reproducibility import set_global_seeds
+from utils.style import COLORS  # importing also registers the ML4T Plotly template
 
 warnings.filterwarnings("ignore")
 
@@ -259,12 +260,12 @@ fig.add_trace(
         y=rolling_mean.to_numpy(),
         mode="lines",
         name="63-day MA",
-        line=dict(width=1.5, color="#2166ac"),
+        line=dict(width=1.5, color=COLORS["amber"]),
     ),
     row=1,
     col=1,
 )
-fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, row=1, col=1)
+fig.add_hline(y=0, line_dash="dash", line_color=COLORS["neutral"], line_width=0.8, row=1, col=1)
 
 # Histogram of differences
 fig.add_trace(
@@ -273,19 +274,18 @@ fig.add_trace(
         nbinsx=50,
         name="Distribution",
         showlegend=False,
-        marker_color="#2166ac",
+        marker_color=COLORS["blue"],
     ),
     row=2,
     col=1,
 )
 
-fig.update_xaxes(title_text="Date", row=1, col=1)
 fig.update_yaxes(title_text="Return Difference", row=1, col=1)
 fig.update_xaxes(title_text="Return Difference", row=2, col=1)
 fig.update_yaxes(title_text="Count", row=2, col=1)
 fig.update_layout(
     height=550,
-    title_text=f"Anchor Alignment Impact — Close-to-Close minus Open-to-Open ({horizon}-day horizon)",
+    title_text=f"Anchor Choice Nets to Zero on Average but Moves Every Trade ({horizon}-day horizon)",
     font=dict(size=12),
     showlegend=True,
     legend=dict(x=0.02, y=0.98),
@@ -339,9 +339,9 @@ if threshold_col:
         labels_ts_pct.to_pandas(),
         x="timestamp",
         y=threshold_col[0],
-        title=f"Rolling 75th Percentile Threshold ({horizon}-day returns)",
+        title=f"The Rolling 75th-Percentile Threshold Adapts to Volatility Regimes ({horizon}-day returns)",
     )
-    fig.update_layout(height=350, yaxis_title="Return Threshold")
+    fig.update_layout(height=350, xaxis_title="Date", yaxis_title="Return Threshold")
     fig.show()
 
 # %% [markdown]
@@ -468,7 +468,7 @@ fig.add_trace(
         y=cs_thresholds["top_threshold"].to_numpy(),
         mode="lines",
         name="Top 20% Threshold",
-        line=dict(color="green"),
+        line=dict(color=COLORS["positive"]),
     )
 )
 fig.add_trace(
@@ -477,12 +477,12 @@ fig.add_trace(
         y=cs_thresholds["bottom_threshold"].to_numpy(),
         mode="lines",
         name="Bottom 20% Threshold",
-        line=dict(color="red"),
+        line=dict(color=COLORS["negative"]),
     )
 )
 fig.update_layout(
     height=400,
-    title="Cross-Sectional Threshold Values Over Time",
+    title="Cross-Sectional Return Thresholds Widen in Volatile Markets",
     xaxis_title="Date",
     yaxis_title=f"{horizon}-day Return Threshold",
 )
@@ -565,7 +565,7 @@ def plot_triple_barrier_example(
             y=forward_rows["close"].to_numpy(),
             mode="lines+markers",
             name="Price",
-            line=dict(color="blue", width=2),
+            line=dict(color=COLORS["blue"], width=2),
             marker=dict(size=4),
         )
     )
@@ -577,24 +577,26 @@ def plot_triple_barrier_example(
             y=[entry_price],
             mode="markers",
             name="Entry",
-            marker=dict(color="black", size=12, symbol="star"),
+            marker=dict(color=COLORS["amber"], size=12, symbol="star"),
         )
     )
 
-    # Upper barrier (horizontal line)
+    # Upper barrier (horizontal line) - label on the left to clear the time-barrier text
     fig.add_hline(
         y=upper_level,
         line_dash="dash",
-        line_color="green",
+        line_color=COLORS["positive"],
         annotation_text=f"TP: {upper_level:.2f} (+{config.upper_barrier:.1%})",
+        annotation_position="top left",
     )
 
     # Lower barrier (horizontal line)
     fig.add_hline(
         y=lower_level,
         line_dash="dash",
-        line_color="red",
+        line_color=COLORS["negative"],
         annotation_text=f"SL: {lower_level:.2f} (-{config.lower_barrier:.1%})",
+        annotation_position="bottom left",
     )
 
     # Time barrier (vertical line at end)
@@ -607,7 +609,7 @@ def plot_triple_barrier_example(
         y0=0,
         y1=1,
         yref="paper",
-        line=dict(color="gray", dash="dot"),
+        line=dict(color=COLORS["neutral"], dash="dot"),
     )
     fig.add_annotation(
         x=time_barrier,
@@ -749,7 +751,7 @@ output_cols = [
 print("Triple-Barrier Output Columns:")
 for col in output_cols:
     dtype = labels_tb[col].dtype
-    print(f"  {col:<20} {str(dtype):<12} — {labels_tb[col].drop_nulls().head(1).to_list()}")
+    print(f"  {col:<20} {str(dtype):<12} - {labels_tb[col].drop_nulls().head(1).to_list()}")
 
 # %%
 # Summary table: mean return and median holding period by barrier type
@@ -785,7 +787,7 @@ fig.show()
 #
 # Overlapping labels create sample dependence. The **sequential bootstrap**
 # (De Prado, AFML Ch4) generates bootstrap indices that respect label
-# uniqueness — favoring samples with less concurrent overlap.
+# uniqueness - favoring samples with less concurrent overlap.
 
 # %%
 # Extract label lifetimes as index ranges for the uniqueness calculation
@@ -820,13 +822,15 @@ print(f"  Improvement:                {(seq_uniqueness.mean() / naive_uniqueness
 fig = make_subplots(rows=1, cols=2, subplot_titles=["Naive Bootstrap", "Sequential Bootstrap"])
 
 fig.add_trace(
-    go.Histogram(x=naive_uniqueness, nbinsx=30, name="Naive", marker_color="gray", opacity=0.7),
+    go.Histogram(
+        x=naive_uniqueness, nbinsx=30, name="Naive", marker_color=COLORS["neutral"], opacity=0.7
+    ),
     row=1,
     col=1,
 )
 fig.add_trace(
     go.Histogram(
-        x=seq_uniqueness, nbinsx=30, name="Sequential", marker_color="#2ca02c", opacity=0.7
+        x=seq_uniqueness, nbinsx=30, name="Sequential", marker_color=COLORS["positive"], opacity=0.7
     ),
     row=1,
     col=2,
@@ -848,8 +852,8 @@ fig.show()
 # for fixed-horizon labels sampled at every bar, $N_{\text{eff}} \approx N / H$.
 #
 # That is an approximation. Below we *measure* $N_{\text{eff}}$ by computing each
-# label's average uniqueness $w_{t,a}$ directly — per symbol, since concurrency
-# accumulates along the time axis, not across the cross-section — and compare it
+# label's average uniqueness $w_{t,a}$ directly - per symbol, since concurrency
+# accumulates along the time axis, not across the cross-section - and compare it
 # to the $N/H$ shortcut. We report both the single-asset (SPY) and the full-panel
 # figures, because they answer different questions: how many independent
 # observations does *one* series carry, and how many does the *panel* carry.
@@ -859,8 +863,8 @@ fig.show()
 #
 # Uniqueness depends only on the label index geometry (start, end, n_bars), not on
 # prices: label i is alive over bars [i, i+H], and w_i averages 1/c(u) over that span.
-# Concurrency is a per-symbol quantity — two different ETFs' labels do not overlap
-# each other in the sense the uniqueness weight measures — so we sum per symbol.
+# Concurrency is a per-symbol quantity - two different ETFs' labels do not overlap
+# each other in the sense the uniqueness weight measures - so we sum per symbol.
 N_nominal = len(etf_with_fwd)
 n_symbols = etf_with_fwd["symbol"].n_unique()
 
@@ -969,7 +973,7 @@ if horizon_col is not None:
             x=selected_horizons.to_numpy(),
             nbinsx=16,
             name="Selected horizon",
-            marker_color="#2166ac",
+            marker_color=COLORS["blue"],
             showlegend=False,
         ),
         row=1,
@@ -990,27 +994,36 @@ if horizon_col is not None:
                 x=raw_t.to_numpy(),
                 nbinsx=50,
                 name="Raw t",
-                marker_color="rgba(33,102,172,0.5)",
-                opacity=0.7,
+                marker_color=COLORS["blue"],
+                opacity=0.5,
             ),
             row=1,
             col=2,
         )
 
-        # Mark both critical values
+        # Mark both critical values - stagger the labels (left vs right) so they don't overlap
         fig.add_vline(
-            x=1.96, line_dash="dash", line_color="blue", annotation_text="t=1.96", row=1, col=2
-        )
-        fig.add_vline(x=-1.96, line_dash="dash", line_color="blue", row=1, col=2)
-        fig.add_vline(
-            x=bonferroni_crit,
+            x=1.96,
             line_dash="dash",
-            line_color="red",
-            annotation_text=f"Bonf={bonferroni_crit:.2f}",
+            line_color=COLORS["slate"],
+            annotation_text="t=1.96",
+            annotation_position="top left",
             row=1,
             col=2,
         )
-        fig.add_vline(x=-bonferroni_crit, line_dash="dash", line_color="red", row=1, col=2)
+        fig.add_vline(x=-1.96, line_dash="dash", line_color=COLORS["slate"], row=1, col=2)
+        fig.add_vline(
+            x=bonferroni_crit,
+            line_dash="dash",
+            line_color=COLORS["negative"],
+            annotation_text=f"Bonf={bonferroni_crit:.2f}",
+            annotation_position="top right",
+            row=1,
+            col=2,
+        )
+        fig.add_vline(
+            x=-bonferroni_crit, line_dash="dash", line_color=COLORS["negative"], row=1, col=2
+        )
 
         # Significance counts
         raw_significant = (raw_t.abs() > 1.96).sum()
@@ -1025,7 +1038,7 @@ if horizon_col is not None:
 # %% [markdown]
 # The Bonferroni correction is conservative but illustrates the magnitude of
 # the selection effect. After correction, many trends that appeared "significant"
-# under the uncorrected test lose significance — confirming the text's warning
+# under the uncorrected test lose significance - confirming the text's warning
 # that uncorrected trend scanning t-statistics should not be taken at face value.
 
 # %%
@@ -1092,7 +1105,7 @@ display(spy_meta["bet_size"].describe())
 # ## 8. Label Diagnostics
 #
 # The function below provides a reusable diagnostic template. Run it on any
-# label column to check distribution stability and class balance—the two
+# label column to check distribution stability and class balance-the two
 # properties that determine whether a label is learnable.
 
 
@@ -1190,7 +1203,7 @@ def label_diagnostics(
             nbins=50,
             title=f"{title_prefix} Label Distribution",
         )
-        fig.update_layout(height=300)
+        fig.update_layout(height=300, xaxis_title="Label value", yaxis_title="Count")
         fig.show()
 
         # Time series if available
@@ -1201,12 +1214,12 @@ def label_diagnostics(
                 y=label_col,
                 title=f"{title_prefix} Labels Over Time",
             )
-            fig.update_layout(height=300)
+            fig.update_layout(height=300, xaxis_title="Date", yaxis_title="Label value")
             fig.show()
 
 
 # Example: run diagnostics on fixed horizon labels
-label_diagnostics(labels_returns, fh_label_col, title_prefix="Fixed Horizon (20d)")
+label_diagnostics(labels_returns, fh_label_col, title_prefix=f"Fixed Horizon ({horizon}d)")
 
 # %% [markdown]
 # ## 9. Label Method Comparison
@@ -1296,7 +1309,6 @@ fig.add_trace(
     col=3,
 )
 
-# %%
 fig.update_layout(
     height=350,
     title_text="Discrete Targets Comparison",
