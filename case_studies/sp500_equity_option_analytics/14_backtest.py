@@ -81,7 +81,8 @@ from utils.style import COLORS, FIGSIZE, add_message_title, zero_line
 CASE_STUDY_ID = "sp500_equity_option_analytics"
 LABEL = ""
 SPLIT = "validation"
-TOP_K = 0  # 0 = use smallest top_k from setup.yaml backtest.sweep.top_k_grid
+# Zero means the smallest top_k from setup.yaml backtest.sweep.top_k_grid.
+TOP_K = 0
 MAX_SYMBOLS = 0
 FORCE_REBACKTEST = False  # Set True to re-backtest even if a complete backtest_hash exists
 TOP_N_PREDICTIONS = None
@@ -121,7 +122,7 @@ print(f"""Protocol term sheet
   Case study:    {CASE_STUDY_ID}
   Label:         {BACKTEST_LABEL}
   Calendar:      {bt_config.calendar}
-  Cadence:       {bt_config.cadence}
+  Cadence:       {bt_config.cadence_for(BACKTEST_LABEL)}
   Commission:    {bt_config.commission_bps:.1f} bps
   Slippage:      {bt_config.slippage_bps:.1f} bps
   Total cost:    {bt_config.commission_bps + bt_config.slippage_bps:.1f} bps/leg
@@ -161,6 +162,7 @@ strategy_spec = build_backtest_spec(
         "top_k": PLUMBING_TOP_K,
         "long_short": bt_config.long_short,
     },
+    label=BACKTEST_LABEL,
 )
 
 try:
@@ -309,6 +311,7 @@ def _pending_specs(pred_row, predictions):
             initial_cash=bt_config.initial_cash,
             chapter="ch16",
             signal=signal,
+            label=BACKTEST_LABEL,
         )
         backtest_hash = backtest_hash_from_parts(pred_hash, serializable_backtest_spec(spec))
         artifact_is_current = _artifact_matches_prediction_window(backtest_hash, predictions)
@@ -582,7 +585,7 @@ fig.show()
 # **Two of those three come from `cohort_metrics`, and this stage does not populate it.**
 # `selection_adjusted_leader_table` LEFT JOINs that table, so `dsr_pvalue`, `k_variants` and
 # `pbo` arrive null until a stage that computes cohort metrics has run - which for this case
-# study is `18_strategy_analysis` via `compute_cohort_metrics`. The guard below says so rather
+# study is `20_strategy_analysis` via `compute_cohort_metrics`. The guard below says so rather
 # than letting three empty columns print as though the adjustment had been made.
 
 # %%
@@ -598,7 +601,7 @@ if _absent:
         f"selection adjustment not available at this stage: {', '.join(_absent)} are entirely "
         f"null because cohort_metrics holds no rows for {CASE_STUDY_ID} yet. The bootstrap "
         "interval below stands on its own; the search-adjusted reading arrives with "
-        "18_strategy_analysis."
+        "20_strategy_analysis."
     )
 family_leaders.select(
     "family",

@@ -218,13 +218,36 @@ def test_notebook_override_parameters_have_final_precedence() -> None:
 
 
 def test_etf_checkpoint_contract_parameters_come_from_notebook_overrides() -> None:
+    """A notebook's own override beats the quick default, whichever name carries it.
+
+    Both etfs sequence notebooks moved onto the research boundary, so they no longer bind
+    `MAX_SYMBOLS`, `N_EPOCHS`, `BATCH_SIZE` or `LOOKBACK`: the window and the batch come from
+    the preset, the epoch budget from the patched fixture presets, and the universe and fold
+    reductions travel in `PREVIEW_REDUCTIONS`. This asserted the pre-conversion names, so it
+    was checking a transcription of `overrides.yaml` that the file had moved past.
+
+    What it is actually for is precedence - that `_quick_parameters` does not overwrite what
+    the notebook declared - so it is expressed against the names each notebook declares now.
+    """
     for stage, expected in {
-        "09_dl_lstm": {"MAX_SYMBOLS": 6, "N_EPOCHS": 6},
-        "10_dl_tsmixer": {"MAX_SYMBOLS": 6, "N_EPOCHS": 2},
+        "09_dl_lstm": {"DEVICE": "cpu", "POPULATION_NAME": "etfs-lstm-preview"},
+        "10_dl_tsmixer": {"DEVICE": "cpu", "POPULATION_NAME": "etfs-tsmixer-preview"},
     }.items():
         overrides = get_overrides(f"case_studies/etfs/{stage}")["parameters"]
         parameters, _ = _quick_parameters("etfs", stage, overrides)
         assert {key: parameters[key] for key in expected} == expected
+        # The reduction survives _quick_parameters unchanged, and it is compared against what
+        # the notebook itself declares rather than against a copy of it written down here.
+        # Transcribing the value is what this test used to do and what the docstring above
+        # describes going wrong: the two notebooks no longer reduce identically - 10_dl_tsmixer
+        # dropped its max_symbols under ml4t/agent-workspace#988 - and a hardcoded mapping
+        # fails on the fixture rather than on the behaviour.
+        declared = overrides["PREVIEW_REDUCTIONS"]
+        assert parameters["PREVIEW_REDUCTIONS"] == declared
+        # A converted notebook that reduces nothing is a canonical run wearing the wrong tier,
+        # which the request builder refuses. That invariant is the part worth asserting.
+        assert declared, f"{stage} declares an empty PREVIEW_REDUCTIONS"
+        assert not {"MAX_SYMBOLS", "N_EPOCHS", "BATCH_SIZE", "LOOKBACK"} & set(overrides)
 
 
 @pytest.mark.parametrize(

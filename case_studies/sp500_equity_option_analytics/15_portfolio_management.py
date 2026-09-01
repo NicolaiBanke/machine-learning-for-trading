@@ -201,6 +201,7 @@ for pred_row in top_preds.iter_rows(named=True):
                     "long_short": bt_config.long_short,
                 },
                 allocation={**alloc, "top_k": top_k, "long_short": bt_config.long_short},
+                label=ALLOCATION_LABEL,
             )
             # run_backtest resolves the conformal calibration identity into the spec
             # before registering, so hash the resolved spec or the cache never hits.
@@ -418,5 +419,5 @@ fig.show()
 # 5. **These are selection-stage results on a current-constituent universe**, so they carry
 #    survivorship bias and establish no out-of-sample edge. The holdout is untouched here.
 #
-# **Next:** [`16_costs`](16_costs.ipynb) applies friction to the leading validation lineage. See
+# **Next:** [`16_risk_management`](16_risk_management.ipynb) applies friction to the leading validation lineage. See
 # Chapter 18 for the transaction-cost framework.
